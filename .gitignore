@@ -19,10 +19,23 @@ __pycache__/
 *$py.class
 *.sqlite3
 
+# Binary archives
+*.zip
+*.tar.gz
+
+# Uploads & Media
+media/
+invoices/
+backend/media/
+backend/invoices/
+
 # Environment & local config
 .env
 .env.local
 .env.*.local
+**/.env
+**/.env.*
+!**/.env.example
 
 # Logs
 logs/
@@ -36,3 +49,4 @@ yarn-error.log*
 .idea/
 .DS_Store
 Thumbs.db
+

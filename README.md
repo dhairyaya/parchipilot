@@ -22,26 +22,63 @@ Rather than just wrapping an LLM to generate text, ParchiPilot utilizes a strict
 
 ## 🏗️ Architecture & Tech Stack
 
-*   **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui.
-*   **Backend API:** Django, Django REST Framework (DRF), PostgreSQL (SQLite for local dev).
-*   **Agentic Orchestration:** LangGraph (State Graph with conditional routing).
-*   **AI / LLM Layer:** Google Gemini 1.5 Flash (via `langchain-google-genai`).
-*   **Document Parsing:** `pdfplumber`, `pytesseract`.
+*   **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, Lucide Icons, Framer Motion.
+*   **Backend API:** Django, Django REST Framework (DRF), SQLite / PostgreSQL.
+*   **Agentic Orchestration:** LangGraph (State Graph pipeline with conditional validation).
+*   **AI / LLM Layer:** Google Gemini (via `langchain-google-genai`), supporting `gemini-3.5-flash` / `gemini-1.5-flash`.
+*   **Document Ingestion:** `pdfplumber` (in-memory multi-format PDF & image rendering).
 
 ### The Agentic Loop
-1. **Ingest:** Accept PDF/Image and extract raw text.
-2. **Extract:** LLM formats text into a strict Pydantic JSON schema.
-3. **Validate:** Python function pings the (Mock) GST Registry API.
-4. **Reason:** If verified, the LLM analyzes amounts against historical vendor data.
-5. **Execute:** Django records the final verdict and reasoning into the `AgentAuditLog`.
+1. **Ingest:** Accept commercial invoice (PDF or image) and render high-resolution raster bytes.
+2. **Extract:** Gemini multimodal model extracts vendor, bill number, amounts, line items, and tax identifiers.
+3. **Validate:** LangGraph validation node checks mathematical subtotal accuracy, tax ID format, and queries the database for duplicate invoice collisions.
+4. **Persist:** Django records the verified document, status (`CLEAN`, `REVIEW`, `FLAGGED`), confidence score, and immutable `AgentStep` telemetry.
+5. **Resolve:** Financial controllers review anomalies, approving, rejecting, or escalating invoices with full audit trail logging.
 
 ---
 
-## 🚀 Local Setup Instructions (Frictionless)
+## 🚀 Local Setup Instructions
 
-We designed this repository to run instantly on your local machine with zero paid API dependencies. 
-
-### 1. Clone & Environment
+### 1. Clone the Repository
 ```bash
-git clone [https://github.com/dhairyaya/parchipilot.git](https://github.com/dhairyaya/parchipilot.git)
+git clone https://github.com/dhairyaya/parchipilot.git
 cd parchipilot
+```
+
+### 2. Backend Setup (Django + LangGraph)
+```bash
+cd backend
+
+# Create & activate a virtual environment
+python -m venv venv
+# On Windows:
+venv\Scripts\activate
+# On Linux/macOS:
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure environment variables
+cp .env.example .env
+# Open .env and add your Google Gemini API key:
+# GOOGLE_API_KEY=your_gemini_api_key_here
+
+# Run database migrations & start development server
+python manage.py migrate
+python manage.py runserver 8000
+```
+The Django API will be live at `http://127.0.0.1:8000/`.
+
+### 3. Frontend Setup (React 19 + Vite)
+```bash
+# In a separate terminal tab:
+cd frontend
+
+# Install Node dependencies
+npm install
+
+# Start the Vite development server with API proxy
+npm run dev
+```
+Open **[http://localhost:5173](http://localhost:5173)** in your browser to launch the ParchiPilot Auditor Dashboard.

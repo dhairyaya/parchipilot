@@ -17,6 +17,8 @@ export function ScanDropzone({ onInvoiceAudited, onScanStatusChange }: ScanDropz
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  const activeBlobUrlRef = useRef<string | null>(null)
+
   function handleFiles(files: FileList | null) {
     if (files && files.length > 0) {
       const file = files[0]
@@ -29,7 +31,6 @@ export function ScanDropzone({ onInvoiceAudited, onScanStatusChange }: ScanDropz
   async function startScan(targetFile?: File | null) {
     const file = targetFile || selectedFile
     if (!file && !inputRef.current?.files?.[0]) {
-      // Trigger file selector if no file selected yet
       inputRef.current?.click()
       return
     }
@@ -42,10 +43,17 @@ export function ScanDropzone({ onInvoiceAudited, onScanStatusChange }: ScanDropz
     setErrorMessage(null)
     setStatusMessage('Uploading to Django API & running multi-point AI audit...')
 
+    // Revoke previous blob preview to prevent browser memory leaks
+    if (activeBlobUrlRef.current) {
+      URL.revokeObjectURL(activeBlobUrlRef.current)
+      activeBlobUrlRef.current = null
+    }
+
     let previewUrl: string | undefined = undefined
     if (fileToUpload.type.startsWith('image/')) {
       try {
         previewUrl = URL.createObjectURL(fileToUpload)
+        activeBlobUrlRef.current = previewUrl
       } catch {
         // ignore
       }
@@ -54,69 +62,43 @@ export function ScanDropzone({ onInvoiceAudited, onScanStatusChange }: ScanDropz
     try {
       const formData = new FormData()
       formData.append('file', fileToUpload)
-      formData.append('document', fileToUpload)
-      formData.append('invoice', fileToUpload)
 
-      const response = await fetch('http://127.0.0.1:8000/api/upload/', {
+      const apiBase = import.meta.env.VITE_API_BASE_URL || ''
+      const uploadUrl = apiBase ? `${apiBase}/api/upload/` : '/api/upload/'
+
+      const response = await fetch(uploadUrl, {
         method: 'POST',
         body: formData,
       })
 
       if (!response.ok) {
-        throw new Error(`Django backend returned HTTP ${response.status}: ${response.statusText}`)
+        let detail = response.statusText
+        try {
+          const errData = await response.json()
+          detail = errData.detail || errData.error || response.statusText
+        } catch {
+          // ignore
+        }
+        throw new Error(`Audit failed (${response.status}): ${detail}`)
       }
 
       const data = await response.json()
       const auditedInvoice = normalizeInvoiceResponse(data, fileToUpload.name, previewUrl)
-      
+
       setStatusMessage(`Successfully audited: ${auditedInvoice.vendor}`)
       onInvoiceAudited?.(auditedInvoice)
       setSelectedFile(null)
-    } catch (err: any) {
-      // Graceful fallback simulation if Django server is not actively running during preview
-      const isClean = Math.random() > 0.4
-      const baseSubtotal = 40000
-      const delivery = 2400
-      const gst = Math.round((baseSubtotal + delivery) * 0.18) // ₹7,632.00
-      const totalAmount = baseSubtotal + delivery + gst // ₹50,032.00
-      const fallbackFormatted = totalAmount.toLocaleString('en-IN', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })
-
-      const fallbackInvoice = normalizeInvoiceResponse(
-        {
-          id: `inv-${Date.now()}`,
-          vendor: fileToUpload.name.replace(/\.[^/.]+$/, '').toUpperCase(),
-          invoiceNo: `EXT-${Math.floor(1000 + Math.random() * 9000)}`,
-          amount: `₹${fallbackFormatted}`,
-          date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-          category: 'Uploaded Invoice',
-          status: isClean ? 'clean' : 'flagged',
-          confidence: Math.floor(Math.random() * 6) + 93,
-          flag: isClean
-            ? undefined
-            : 'Tax rate mismatch & suspicious vendor banking change detected by AI agent.',
-          anomalyField: isClean ? undefined : 'total',
-          line_items: [
-            { label: 'Procurement Package Services', qty: 1, price: '₹40,000.00' },
-            { label: 'Standard Delivery & Transit', qty: 1, price: '₹2,400.00' },
-            { label: 'GST (18%) Compliance Calculation', qty: 1, price: '₹7,632.00' },
-          ],
-        },
-        fileToUpload.name,
-        previewUrl
+    } catch (err: unknown) {
+      setErrorMessage(
+        err instanceof Error ? err.message : 'Upload failed — please check network or try again.'
       )
-
-      setErrorMessage('Cloud AI API offline — completed local autonomous audit simulation')
-      setStatusMessage(`Audited: ${fallbackInvoice.vendor}`)
-      onInvoiceAudited?.(fallbackInvoice)
-      setSelectedFile(null)
+      setStatusMessage(null)
     } finally {
       setIsScanning(false)
       onScanStatusChange?.(false)
     }
   }
+
 
   return (
     <section
@@ -225,7 +207,7 @@ export function ScanDropzone({ onInvoiceAudited, onScanStatusChange }: ScanDropz
         )}
 
         {statusMessage && !errorMessage && !isScanning && (
-          <p className="relative z-10 mt-2 flex items-center gap-1.5 text-xs text-accent">
+          <p className="relative z-10 mt-2 flex items-center gap-1.5 text-xs text-success">
             <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
             {statusMessage}
           </p>

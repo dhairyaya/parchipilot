@@ -6,13 +6,12 @@ import {
   FileText,
   ShieldAlert,
   ShieldCheck,
-  ZoomIn,
-  ZoomOut,
   Layers,
-  Download,
-  CheckCircle2,
+  FileCheck,
+  Eye,
 } from 'lucide-react'
 import type { Invoice, ResolutionStatus } from '../lib/invoices'
+import { AuditCertificateModal } from './audit-certificate-modal'
 
 // Synthesized or server-extracted line items so the document reads like a real invoice scan.
 function lineItemsFor(invoice: Invoice) {
@@ -41,11 +40,9 @@ export function DocumentViewer({
   invoice,
   hoveredAnomalyKey,
   onHoverAnomaly,
-  }: DocumentViewerProps) {
-  const [zoomLevel, setZoomLevel] = useState<number>(1)
+}: DocumentViewerProps) {
   const [viewMode, setViewMode] = useState<'ocr' | 'clean'>('ocr')
-  const [isExporting, setIsExporting] = useState(false)
-  const [exportNotice, setExportNotice] = useState<string | null>(null)
+  const [isCertModalOpen, setIsCertModalOpen] = useState(false)
 
   const isAnomaly = invoice.status !== 'clean'
   const items = lineItemsFor(invoice)
@@ -54,15 +51,6 @@ export function DocumentViewer({
   const isTotalHovered = hoveredAnomalyKey === 'total'
   const isInvoiceNoHovered =
     hoveredAnomalyKey === 'invoiceNo' || hoveredAnomalyKey === 'metadata'
-
-  function handleExportCertificate() {
-    setIsExporting(true)
-    setTimeout(() => {
-      setIsExporting(false)
-      setExportNotice(`Audit Certificate for ${invoice.invoiceNo} generated (SHA256 verified)`)
-      setTimeout(() => setExportNotice(null), 4000)
-    }, 800)
-  }
 
   return (
     <div className="glass flex h-full flex-col overflow-hidden rounded-3xl">
@@ -75,13 +63,13 @@ export function DocumentViewer({
           </span>
         </div>
 
-        {/* View mode & Zoom controls */}
+        {/* View mode & Export Certificate */}
         <div className="flex items-center gap-2">
           <div className="flex items-center rounded-lg border border-border bg-surface/50 p-0.5 text-xs">
             <button
               type="button"
               onClick={() => setViewMode('ocr')}
-              className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold transition-all ${
+              className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold transition-all ${
                 viewMode === 'ocr'
                   ? 'bg-glow/20 text-glow shadow-sm'
                   : 'text-silver/60 hover:text-foreground'
@@ -92,69 +80,49 @@ export function DocumentViewer({
             <button
               type="button"
               onClick={() => setViewMode('clean')}
-              className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold transition-all ${
+              className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold transition-all ${
                 viewMode === 'clean'
                   ? 'bg-surface text-foreground shadow-sm'
                   : 'text-silver/60 hover:text-foreground'
               }`}
             >
-              Raw View
-            </button>
-          </div>
-
-          <div className="hidden items-center rounded-lg border border-border bg-surface/40 px-1.5 py-0.5 sm:flex">
-            <button
-              type="button"
-              onClick={() => setZoomLevel((z) => Math.max(0.85, z - 0.1))}
-              className="p-1 text-silver/60 hover:text-foreground disabled:opacity-30"
-              disabled={zoomLevel <= 0.85}
-              title="Zoom out"
-            >
-              <ZoomOut className="h-3 w-3" />
-            </button>
-            <span className="px-1.5 font-mono text-[10px] text-silver/80">
-              {Math.round(zoomLevel * 100)}%
-            </span>
-            <button
-              type="button"
-              onClick={() => setZoomLevel((z) => Math.min(1.25, z + 0.1))}
-              className="p-1 text-silver/60 hover:text-foreground disabled:opacity-30"
-              disabled={zoomLevel >= 1.25}
-              title="Zoom in"
-            >
-              <ZoomIn className="h-3 w-3" />
+              <Eye className="h-3 w-3" /> {invoice.fileUrl ? 'Original Scan' : 'Raw View'}
             </button>
           </div>
 
           <button
             type="button"
-            onClick={handleExportCertificate}
-            disabled={isExporting}
-            className="hidden items-center gap-1 rounded-lg border border-border bg-surface/60 px-2.5 py-1 text-[11px] font-semibold text-silver/80 transition-colors hover:border-glow/60 hover:text-foreground md:inline-flex"
+            onClick={() => setIsCertModalOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface/60 px-3 py-1 text-[11px] font-semibold text-silver/80 transition-colors hover:border-glow/60 hover:text-foreground"
+            title="Open official statutory audit certificate"
           >
-            <Download className="h-3 w-3" />
-            {isExporting ? 'Exporting…' : 'Export Audit'}
+            <FileCheck className="h-3.5 w-3.5 text-glow" />
+            <span>Export Certificate</span>
           </button>
         </div>
       </div>
 
-      {exportNotice && (
-        <div className="flex items-center gap-1.5 bg-glow/10 px-5 py-1.5 text-xs text-glow border-b border-glow/20 animate-fadeIn">
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          {exportNotice}
-        </div>
-      )}
-
       {/* Document canvas */}
       <div className="relative flex-1 overflow-y-auto p-5 sm:p-8">
-        <motion.div
-          key={invoice.id}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top center' }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="relative mx-auto flex min-h-[440px] max-w-md flex-col rounded-xl bg-[oklch(0.96_0.01_230)] p-6 text-[oklch(0.2_0.02_250)] shadow-2xl transition-transform sm:p-8"
-        >
+        {viewMode === 'clean' && invoice.fileUrl ? (
+          <div className="flex min-h-[440px] w-full flex-col items-center justify-center rounded-2xl border border-border/80 bg-surface/20 p-4">
+            <img
+              src={invoice.fileUrl}
+              alt={invoice.fileName || 'Original Document Scan'}
+              className="max-h-[600px] w-auto max-w-full rounded-xl object-contain shadow-2xl border border-border/60"
+            />
+            <p className="mt-3 font-mono text-[11px] text-silver/60">
+              Source: {invoice.fileName || 'Uploaded Scan'}
+            </p>
+          </div>
+        ) : (
+          <motion.div
+            key={invoice.id}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="relative mx-auto flex min-h-[440px] max-w-md flex-col rounded-xl bg-[oklch(0.96_0.01_230)] p-6 text-[oklch(0.2_0.02_250)] shadow-2xl sm:p-8"
+          >
           {/* Laser sweep over the page */}
           <span
             aria-hidden
@@ -166,7 +134,7 @@ export function DocumentViewer({
             <div
               onMouseEnter={() => (viewMode === 'ocr' ? onHoverAnomaly?.('vendor') : undefined)}
               onMouseLeave={() => (viewMode === 'ocr' ? onHoverAnomaly?.(null) : undefined)}
-              className={`group/field relative rounded-lg p-2 transition-all duration-150 ease-out ${
+              className={`group/field relative min-w-0 rounded-lg p-2 transition-all duration-150 ease-out ${
                 viewMode === 'ocr'
                   ? `cursor-pointer border ${
                       isVendorHovered
@@ -197,7 +165,7 @@ export function DocumentViewer({
                     : 'VENDOR_NAME'}
                 </span>
               )}
-              <p className="text-lg font-black uppercase tracking-tight">{invoice.vendor}</p>
+              <p className="truncate text-lg font-black uppercase tracking-tight">{invoice.vendor}</p>
               <p className="text-xs text-[oklch(0.5_0.02_250)]">Tax Invoice</p>
             </div>
 
@@ -370,6 +338,7 @@ export function DocumentViewer({
             </div>
           </div>
         </motion.div>
+        )}
       </div>
 
       {/* Verdict strip */}
@@ -408,6 +377,13 @@ export function DocumentViewer({
           </span>
         )}
       </div>
+
+      {/* Official Statutory Audit Certificate Modal */}
+      <AuditCertificateModal
+        invoice={invoice}
+        isOpen={isCertModalOpen}
+        onClose={() => setIsCertModalOpen(false)}
+      />
     </div>
   )
 }

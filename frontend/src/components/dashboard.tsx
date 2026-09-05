@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { motion, type Variants } from 'framer-motion'
 import {
   ListChecks,
@@ -44,6 +44,7 @@ export function Dashboard({ onReplayIntro }: DashboardProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterTab, setFilterTab] = useState<FilterTab>('all')
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const selected = invoicesList.find((i) => i.id === activeInvoiceId) ?? invoicesList[0]
   const flaggedCount = invoicesList.filter((i) => i.status !== 'clean').length
@@ -92,7 +93,12 @@ export function Dashboard({ onReplayIntro }: DashboardProps) {
     showToast(`Audited document: ${newInvoice.vendor}`)
   }
 
-  function handleResolve(id: string, action: ResolutionStatus, note?: string) {
+  async function handleResolve(id: string, action: ResolutionStatus, note?: string) {
+    const backendAction = action.toUpperCase()
+    const apiBase = import.meta.env.VITE_API_BASE_URL || ''
+    const resolveUrl = apiBase ? `${apiBase}/api/invoices/${id}/resolve/` : `/api/invoices/${id}/resolve/`
+
+    // Optimistically update local UI state
     setInvoicesList((prev) =>
       prev.map((inv) => {
         if (inv.id === id) {
@@ -106,6 +112,19 @@ export function Dashboard({ onReplayIntro }: DashboardProps) {
       })
     )
 
+    // Persist to backend if invoice has a numeric Django ID
+    if (!isNaN(Number(id))) {
+      try {
+        await fetch(resolveUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: backendAction, notes: note || '' }),
+        })
+      } catch (err) {
+        console.warn('Could not persist audit resolution to backend API:', err)
+      }
+    }
+
     const actionText =
       action === 'approved'
         ? 'Payment Approved & Queued for ERP'
@@ -116,20 +135,69 @@ export function Dashboard({ onReplayIntro }: DashboardProps) {
   }
 
   function showToast(msg: string) {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current)
+    }
     setToastMessage(msg)
-    setTimeout(() => setToastMessage(null), 3500)
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage(null)
+      toastTimeoutRef.current = null
+    }, 3500)
   }
 
+
   function handleExportAll() {
-    const dataStr =
-      'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(invoicesList, null, 2))
+    const headers = [
+      'Invoice ID',
+      'Vendor Name',
+      'Invoice Number',
+      'Invoice Date',
+      'Billing Category',
+      'Reconciled Amount',
+      'Audit Status',
+      'AI Confidence (%)',
+      'Auditor Resolution',
+      'Anomaly Flag Details',
+      'Statutory Checks Summary',
+    ]
+
+    const escapeCsv = (val: unknown) => {
+      const str = String(val ?? '').replace(/"/g, '""')
+      return `"${str}"`
+    }
+
+    const rows = invoicesList.map((inv) => {
+      const checksSummary = (inv.auditChecks || [])
+        .map((c) => `${c.name}: [${c.status.toUpperCase()}] ${c.detail}`)
+        .join(' | ')
+
+      return [
+        escapeCsv(inv.id),
+        escapeCsv(inv.vendor),
+        escapeCsv(inv.invoiceNo),
+        escapeCsv(inv.date),
+        escapeCsv(inv.category),
+        escapeCsv(inv.amount),
+        escapeCsv(inv.status.toUpperCase()),
+        escapeCsv(inv.confidence),
+        escapeCsv(inv.resolution || 'pending'),
+        escapeCsv(inv.flag || 'None (Clean Document)'),
+        escapeCsv(checksSummary),
+      ].join(',')
+    })
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
     const downloadAnchor = document.createElement('a')
-    downloadAnchor.setAttribute('href', dataStr)
-    downloadAnchor.setAttribute('download', `parchipilot_audit_report_${Date.now()}.json`)
+    downloadAnchor.href = url
+    downloadAnchor.download = `parchipilot_audit_ledger_${Date.now()}.csv`
     document.body.appendChild(downloadAnchor)
     downloadAnchor.click()
     downloadAnchor.remove()
-    showToast('Exported complete multi-point audit log (.JSON)')
+    URL.revokeObjectURL(url)
+
+    showToast('Exported audit ledger (.CSV for Excel / Sheets)')
   }
 
   return (

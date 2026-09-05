@@ -42,11 +42,11 @@ export function DashboardHeader({ onReplayIntro, onExportAll }: DashboardHeaderP
           <button
             type="button"
             onClick={onExportAll}
-            title="Export all audit logs to JSON / CSV"
+            title="Export master ledger to Excel / CSV"
             className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-glow/40 hover:text-foreground"
           >
             <FileSpreadsheet className="h-3.5 w-3.5 text-glow" />
-            <span>Export Audit Trail</span>
+            <span>Export Ledger (.CSV)</span>
           </button>
         )}
 
@@ -61,8 +61,9 @@ export function DashboardHeader({ onReplayIntro, onExportAll }: DashboardHeaderP
         </div>
         <div className="glass hidden items-center gap-2 rounded-full px-4 py-2 sm:flex">
           <ShieldCheck className="h-4 w-4 text-accent" />
-          <span className="text-xs font-medium text-muted-foreground">SOC-2 Secured</span>
+          <span className="text-xs font-medium text-muted-foreground">Immutable Ledger</span>
         </div>
+
       </div>
     </header>
   )

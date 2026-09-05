@@ -297,3 +297,27 @@
     50% { background-position: 100% 50%; }
   }
 }
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+  body * {
+    visibility: hidden;
+  }
+  #printable-audit-certificate,
+  #printable-audit-certificate * {
+    visibility: visible;
+  }
+  #printable-audit-certificate {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 24px;
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+}

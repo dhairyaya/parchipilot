@@ -1,22 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ThemeProvider } from './components/theme-provider'
 import { IntroSequence } from './components/intro-sequence'
 import { Dashboard } from './components/dashboard'
 
 export default function App() {
-  const [introDone, setIntroDone] = useState(false)
-
-  useEffect(() => {
+  const [introDone, setIntroDone] = useState<boolean>(() => {
     try {
-      const seen = localStorage.getItem('parchi_intro_seen')
-      if (seen === 'true') {
-        setIntroDone(true)
-      }
+      return localStorage.getItem('parchi_intro_seen') === 'true'
     } catch {
-      // ignore
+      return false
     }
-  }, [])
+  })
 
   function handleIntroComplete() {
     setIntroDone(true)
@@ -26,10 +21,16 @@ export default function App() {
       // ignore
     }
   }
-
+ 
   function handleReplayIntro() {
+    try {
+      localStorage.removeItem('parchi_intro_seen')
+    } catch {
+      // ignore
+    }
     setIntroDone(false)
   }
+
 
   return (
     <ThemeProvider defaultTheme="dark">

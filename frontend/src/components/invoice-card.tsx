@@ -8,8 +8,6 @@ import {
   Check,
   X,
   AlertOctagon,
-  ChevronDown,
-  ChevronUp,
   Shield,
   FileCheck2,
 } from 'lucide-react'
@@ -135,25 +133,25 @@ export function InvoiceCard({
         </div>
       )}
 
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h3 className="truncate text-lg font-bold tracking-tight text-foreground">
-            {invoice.vendor}
-          </h3>
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-silver/80">
-            <span className="inline-flex items-center gap-1 font-mono">
-              <Hash className="h-3 w-3" />
-              {invoice.invoiceNo}
-            </span>
-            <span className="inline-flex items-center gap-1 font-mono">
-              <Calendar className="h-3 w-3" />
-              {invoice.date}
-            </span>
-            <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">
-              {invoice.category}
-            </span>
-          </div>
-        </div>
+  <div className="flex items-start justify-between gap-4">
+  <div className="min-w-0 flex-1">
+    <h3 className="truncate text-lg font-bold tracking-tight text-foreground">
+      {invoice.vendor}
+    </h3>
+    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-silver/80">
+      <span className="inline-flex items-center gap-1 font-mono">
+        <Hash className="h-3 w-3" />
+        {invoice.invoiceNo}
+      </span>
+      <span className="inline-flex items-center gap-1 font-mono">
+        <Calendar className="h-3 w-3" />
+        {invoice.date}
+      </span>
+      <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">
+        {invoice.category}
+      </span>
+    </div>
+  </div>
 
         <div className="shrink-0 text-right">
           <p className="font-mono text-3xl font-extrabold leading-none tracking-tight text-foreground sm:text-4xl">
@@ -175,7 +173,6 @@ export function InvoiceCard({
           {meta.label}
         </span>
 
-        {/* AI confidence with interactive inspector toggle */}
         <button
           type="button"
           onClick={(e) => {
@@ -186,11 +183,6 @@ export function InvoiceCard({
         >
           <span>AI confidence</span>
           <span className="font-mono font-semibold text-foreground">{invoice.confidence}%</span>
-          {showConfidenceDetails ? (
-            <ChevronUp className="h-3 w-3 text-glow" />
-          ) : (
-            <ChevronDown className="h-3 w-3 text-silver/60 group-hover/conf:text-glow" />
-          )}
         </button>
       </div>
 
