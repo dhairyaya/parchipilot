@@ -1,7 +1,7 @@
 # 🧾 ParchiPilot
 **Autonomous Agentic AI Financial Auditor & Controller**
 
-[![Razorpay AI Buildathon 2026](https://img.shields.io/badge/Razorpay_AI_Buildathon-Track_04:_AI_Finance_Controller-blue.svg)](#)
+[![Razorpay AI Builder Internship 2026](https://img.shields.io/badge/Razorpay_AI_Builder_Internship-Track_04:_AI_Finance_Controller-blue.svg)](#)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-3776AB.svg?logo=python&logoColor=white)](#)
 [![Django 5.x](https://img.shields.io/badge/django-5.2+-092E20.svg?logo=django&logoColor=white)](#)
 [![React 19](https://img.shields.io/badge/react-19.2+-61DAFB.svg?logo=react&logoColor=black)](#)
@@ -23,7 +23,7 @@ Instead of operating as a generic text-generation LLM wrapper, ParchiPilot imple
 * **In-Memory Rasterization (`pdfplumber`):** Converts vector PDFs into crisp high-DPI image bytes entirely in memory without writing temporary files to disk, feeding optimal pixels into Gemini Vision.
 
 ### 2. Multi-Agent Verification State Graph (LangGraph)
-* **Extraction Agent:** Uses `gemini-3.5-flash` (with automated fallback to `gemini-1.5-flash`) to parse messy, wrinkled, photographed, or digital invoices into a validated Pydantic schema.
+* **Extraction Agent:** Uses `gemini-3.5-flash` to parse messy, wrinkled, photographed, or digital invoices into a validated Pydantic schema.
 * **Statutory Checkpoint Tools:**
   * **Ledger Duplicate Collision Detection:** Performs historical archive scans across database records to catch identical invoice numbers or duplicate billing amounts within billing cycles.
   * **Statutory GSTIN / Tax Checksum:** Validates 15-character Indian GSTIN structures, including 2-digit state code validation, 10-character PAN syntax, and statutory checksum algorithms.
@@ -266,5 +266,5 @@ This runs the full extraction and validation loop against `test_images/sample_in
 
 ## ⚖️ License & Attribution
 
-Built for the **Razorpay AI Buildathon 2026** — *Track 04: AI Finance Controller*.  
+Built for the **Razorpay AI Builder Internship 2026** — *Track 04: AI Finance Controller*.  
 Developed with pride by [dhairyaya](https://github.com/dhairyaya).
